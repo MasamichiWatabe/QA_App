@@ -25,6 +25,8 @@ public class QuestionDetailActivity extends AppCompatActivity {
 
     private DatabaseReference mAnswerRef;
 
+    private Boolean isLogin;    // [課題]お気に入りボタン関連　ログインしてるか真偽判定
+
     private ChildEventListener mEventListener = new ChildEventListener() {
         @Override
         public void onChildAdded(DataSnapshot dataSnapshot, String s) {
@@ -78,11 +80,19 @@ public class QuestionDetailActivity extends AppCompatActivity {
         Bundle extras = getIntent().getExtras();
         mQuestion = (Question) extras.get("question");
 
-        setTitle(mQuestion.getTitle());
+        //setTitle(mQuestion.getTitle());
+        setTitle(getGenreName(mQuestion.getGenre()));       // [課題]ジャンル名に変更
+
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();        // [課題]ログインしているか判定
+        if (user != null ){               // ログインしている時
+            isLogin = true;
+        }else{                          // ログインしていない時
+            isLogin = false;
+        }
 
         // ListViewの準備
         mListView = (ListView) findViewById(R.id.listView);
-        mAdapter = new QuestionDetailListAdapter(this, mQuestion);
+        mAdapter = new QuestionDetailListAdapter(this, mQuestion, isLogin);     // [課題]引数にログインしているかどうかの判定を追加
         mListView.setAdapter(mAdapter);
         mAdapter.notifyDataSetChanged();
 
@@ -109,5 +119,18 @@ public class QuestionDetailActivity extends AppCompatActivity {
         DatabaseReference dataBaseReference = FirebaseDatabase.getInstance().getReference();
         mAnswerRef = dataBaseReference.child(Const.ContentsPATH).child(String.valueOf(mQuestion.getGenre())).child(mQuestion.getQuestionUid()).child(Const.AnswersPATH);
         mAnswerRef.addChildEventListener(mEventListener);
+    }
+
+    public String getGenreName(int mGenre){
+        if(mGenre == 1){
+            return "趣味";
+        } else if (mGenre == 2){
+            return "生活";
+        } else if (mGenre == 3){
+            return "健康";
+        } else if(mGenre == 4){
+            return "コンピューター";
+        }
+        return "趣味"; // 一旦"趣味"で返す
     }
 }

@@ -42,6 +42,8 @@ public class MainActivity extends AppCompatActivity
     private ArrayList<Question> mQuestionArrayList;
     private QuestionsListAdapter mAdapter;
 
+
+
     private ChildEventListener mEventListener = new ChildEventListener() {
         @Override
         public void onChildAdded(DataSnapshot dataSnapshot, String s) {
