@@ -1,9 +1,8 @@
 package jp.techacademy.masamichi.watabe.qa_app;
 
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
 import android.support.design.widget.Snackbar;
@@ -13,9 +12,10 @@ import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Base64;
+import android.util.Log;
+import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
 
@@ -42,11 +42,13 @@ public class MainActivity extends AppCompatActivity
     private ArrayList<Question> mQuestionArrayList;
     private QuestionsListAdapter mAdapter;
 
-
-
     private ChildEventListener mEventListener = new ChildEventListener() {
         @Override
         public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+
+            String mKey = dataSnapshot.getKey();
+            Log.d("mEventListener.key",mKey);
+
             HashMap map = (HashMap) dataSnapshot.getValue();
             String title = (String) map.get("title");
             String body = (String) map.get("body");
@@ -131,6 +133,7 @@ public class MainActivity extends AppCompatActivity
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+
                 // ジャンルを選択していない場合（mGenre == 0）はエラーを表示するだけ
                 if (mGenre == 0) {
                     Snackbar.make(view, "ジャンルを選択して下さい", Snackbar.LENGTH_LONG).show();
@@ -150,9 +153,9 @@ public class MainActivity extends AppCompatActivity
                     intent.putExtra("genre", mGenre);
                     startActivity(intent);
                 }
-
             }
         });
+
 
         // ナビゲーションドロワーの設定
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -182,6 +185,19 @@ public class MainActivity extends AppCompatActivity
             }
         });
 
+        // ログイン済みのユーザーを取得する
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+
+        // ここで表示・非表示の切り替え
+        Menu menu = navigationView.getMenu();
+        MenuItem menuItem = menu.findItem(R.id.nav_favorite);
+
+        if (user == null){
+            menuItem.setVisible(false);
+        }else{
+            menuItem.setVisible(true);
+        }
+
     }
 
     @Override
@@ -193,18 +209,40 @@ public class MainActivity extends AppCompatActivity
             NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
             onNavigationItemSelected(navigationView.getMenu().getItem(0));
         }
+
+        // ログイン済みのユーザーを取得する
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+
+        // ここで表示・非表示の切り替え
+        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+        Menu menu = navigationView.getMenu();
+        MenuItem menuItem = menu.findItem(R.id.nav_favorite);
+
+
+        if (user == null){
+            menuItem.setVisible(false);
+        }else{
+            menuItem.setVisible(true);
+        }
+
+
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
+        //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
             Intent intent = new Intent(getApplicationContext(), SettingActivity.class);
             startActivity(intent);
@@ -215,7 +253,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public boolean onNavigationItemSelected(MenuItem item) {
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
 
         if (id == R.id.nav_hobby) {
@@ -230,8 +268,14 @@ public class MainActivity extends AppCompatActivity
         } else if (id == R.id.nav_compter) {
             mToolbar.setTitle("コンピューター");
             mGenre = 4;
+        } else if (id == R.id.nav_favorite){
+//            mToolbar.setTitle("お気に入り");
+            Intent intent = new Intent(getApplicationContext(),FavoritesActivity.class);
+            startActivity(intent);
+            return false;
         }
 
+        // [課題]
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
 
@@ -240,7 +284,8 @@ public class MainActivity extends AppCompatActivity
         mAdapter.setQuestionArrayList(mQuestionArrayList);
         mListView.setAdapter(mAdapter);
 
-        // 選択したジャンルにリスナーを登録する
+        // [課題]選択したジャンルにリスナーを登録する
+        // ジャンルが変わるから,毎度リセットが必要
         if (mGenreRef != null) {
             mGenreRef.removeEventListener(mEventListener);
         }
@@ -248,5 +293,6 @@ public class MainActivity extends AppCompatActivity
         mGenreRef.addChildEventListener(mEventListener);
 
         return true;
+
     }
 }

@@ -1,9 +1,9 @@
 package jp.techacademy.masamichi.watabe.qa_app;
 
 import android.content.Intent;
-import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
 import android.view.View;
 import android.widget.ListView;
 
@@ -19,13 +19,17 @@ import java.util.HashMap;
 
 public class QuestionDetailActivity extends AppCompatActivity {
 
+    // ログインしている場合に質問詳細画面に「お気に入り」ボタンを表示させる
+    // ログインしているかどうかbool変数で保持 → アダプターに真偽値をいれて渡す
+
     private ListView mListView;
     private Question mQuestion;
     private QuestionDetailListAdapter mAdapter;
 
     private DatabaseReference mAnswerRef;
 
-    private Boolean isLogin;    // [課題]お気に入りボタン関連　ログインしてるか真偽判定
+    private Boolean isLogin;
+
 
     private ChildEventListener mEventListener = new ChildEventListener() {
         @Override
@@ -71,6 +75,7 @@ public class QuestionDetailActivity extends AppCompatActivity {
         }
     };
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -80,19 +85,23 @@ public class QuestionDetailActivity extends AppCompatActivity {
         Bundle extras = getIntent().getExtras();
         mQuestion = (Question) extras.get("question");
 
-        //setTitle(mQuestion.getTitle());
-        setTitle(getGenreName(mQuestion.getGenre()));       // [課題]ジャンル名に変更
+//        setTitle(mQuestion.getTitle());
 
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();        // [課題]ログインしているか判定
-        if (user != null ){               // ログインしている時
+        // ジャンル名に変更
+        setTitle(getGenreName(mQuestion.getGenre()));
+
+        // ログインしているかどうか判定
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+
+        if(user != null ){ // ログインしている
             isLogin = true;
-        }else{                          // ログインしていない時
+        }else{ // ログインしていない
             isLogin = false;
         }
 
         // ListViewの準備
         mListView = (ListView) findViewById(R.id.listView);
-        mAdapter = new QuestionDetailListAdapter(this, mQuestion, isLogin);     // [課題]引数にログインしているかどうかの判定を追加
+        mAdapter = new QuestionDetailListAdapter(this, mQuestion,isLogin);
         mListView.setAdapter(mAdapter);
         mAdapter.notifyDataSetChanged();
 
@@ -121,7 +130,30 @@ public class QuestionDetailActivity extends AppCompatActivity {
         mAnswerRef.addChildEventListener(mEventListener);
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        // ログインしているかどうか判定
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+
+        if(user != null ){ // ログインしている
+            isLogin = true;
+            mAdapter = new QuestionDetailListAdapter(this, mQuestion,isLogin);
+            mListView.setAdapter(mAdapter);
+            mAdapter.notifyDataSetChanged();
+        }else{ // ログインしていない
+            isLogin = false;
+            mAdapter = new QuestionDetailListAdapter(this, mQuestion,isLogin);
+            mListView.setAdapter(mAdapter);
+            mAdapter.notifyDataSetChanged();
+        }
+    }
+
+
+    // ジャンル名を返すメソッド
     public String getGenreName(int mGenre){
+
         if(mGenre == 1){
             return "趣味";
         } else if (mGenre == 2){
@@ -131,6 +163,8 @@ public class QuestionDetailActivity extends AppCompatActivity {
         } else if(mGenre == 4){
             return "コンピューター";
         }
-        return "趣味"; // 一旦"趣味"で返す
+
+        return "QA_App";
+
     }
 }

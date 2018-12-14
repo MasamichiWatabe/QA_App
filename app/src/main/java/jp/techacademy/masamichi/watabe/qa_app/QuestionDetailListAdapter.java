@@ -1,37 +1,54 @@
 package jp.techacademy.masamichi.watabe.qa_app;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import android.view.animation.Animation;        // [課題]
-import android.view.animation.AnimationUtils;   // [課題]
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
+import com.google.firebase.database.ValueEventListener;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class QuestionDetailListAdapter extends BaseAdapter {
+
     private final static int TYPE_QUESTION = 0;
     private final static int TYPE_ANSWER = 1;
 
     private LayoutInflater mLayoutInflater = null;
-    private Question mQuestion;
+    private Question mQustion;
 
-    private Boolean mIsLogin;   // [課題]ログインしているか判定
-    private Boolean mIsClick = false; // [課題]お気に入りボタンがクリックされたかどうか
+    private Boolean mIsLogin; // ログインしているかどうか
+    private Boolean mIsClick;// ハートボタンがクリックされたかどうか
 
-    public QuestionDetailListAdapter(Context context, Question question, Boolean isLogin) {
+
+    public QuestionDetailListAdapter(Context context, Question question,Boolean isLogin) {
         mLayoutInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        mQuestion = question;
-        mIsLogin = isLogin;     // [課題]
+        mQustion = question;
+        mIsLogin = isLogin;
     }
 
     @Override
     public int getCount() {
-        return 1 + mQuestion.getAnswers().size();
+        return 1 + mQustion.getAnswers().size();
     }
 
     @Override
@@ -50,11 +67,11 @@ public class QuestionDetailListAdapter extends BaseAdapter {
 
     @Override
     public Object getItem(int position) {
-        return mQuestion;
+        return mQustion;
     }
 
     @Override
-    public long getItemId(int position) {
+    public long getItemId(int i) {
         return 0;
     }
 
@@ -62,25 +79,15 @@ public class QuestionDetailListAdapter extends BaseAdapter {
     public View getView(int position, View convertView, ViewGroup parent) {
 
         if (getItemViewType(position) == TYPE_QUESTION) {
+
             if (convertView == null) {
                 convertView = mLayoutInflater.inflate(R.layout.list_question_detail, parent, false);
             }
 
-            final ImageView likeButton = convertView.findViewById(R.id.like_button);        // [課題]お気に入り画像(ハートを予定)を設定
 
-            if (mIsLogin){      // [課題]　ログイン判定によって表示させるかどうか選択
-                // [課題]お気に入り画像(ハートを予定)の表示
-                likeButton.setVisibility(View.VISIBLE);
-            } else {
-                // [課題]お気に入り画像(ハートを予定)の非表示
-                likeButton.setVisibility(View.INVISIBLE);
-            }
-
-
-            String title = mQuestion.getTitle();    // [課題]
-            String body = mQuestion.getBody();
-            String name = mQuestion.getName();
-
+            String title = mQustion.getTitle();
+            String body = mQustion.getBody();
+            String name = mQustion.getName();
 
             TextView titleTextView = convertView.findViewById(R.id.titleTextView);
             titleTextView.setText(title);
@@ -91,28 +98,107 @@ public class QuestionDetailListAdapter extends BaseAdapter {
             TextView nameTextView = convertView.findViewById(R.id.nameTextView);
             nameTextView.setText(name);
 
-            byte[] bytes = mQuestion.getImageBytes();
+            byte[] bytes = mQustion.getImageBytes();
             if (bytes.length != 0) {
                 Bitmap image = BitmapFactory.decodeByteArray(bytes, 0, bytes.length).copy(Bitmap.Config.ARGB_8888, true);
                 ImageView imageView = (ImageView) convertView.findViewById(R.id.imageView);
                 imageView.setImageBitmap(image);
             }
 
-            // [課題]お気に入りボタンの処理
+            final ImageView likeButton = convertView.findViewById(R.id.like_button);
+
+            if (mIsLogin){
+                // ハートの表示
+                likeButton.setVisibility(View.VISIBLE);
+            }else{
+                // ハートの非表示
+                likeButton.setVisibility(View.INVISIBLE);
+            }
+
+            // タイトルとお気に入りの数の取得
+            // お気に入り数は一旦保留
+
+            // getViewしてきた際に，いいね済みかどうか判定
+            // userのfavoritesのなかに，今のQuestionのidがあるかどうか判断
+            // いいね済みならmIsClick変数をtrueにしないといけない
+
+            mIsClick = false;
+
+            // firebaseの初期化
+            DatabaseReference mDataBaseReference = FirebaseDatabase.getInstance().getReference();
+            // FirebaseAuthのオブジェクトを取得する
+            FirebaseAuth mAuth = FirebaseAuth.getInstance();
+            // ログインしているユーザーの取得
+            FirebaseUser user = mAuth.getCurrentUser();
+
+            DatabaseReference userRef = null;
+
+            if(user != null){
+//                userRef = mDataBaseReference.child(Const.UsersPATH).child(user.getUid()).child(Const.FavoritesPATH).child(mQustion.getQuestionUid());
+                userRef = mDataBaseReference.child(Const.FavoritesPATH).child(user.getUid()).child(mQustion.getQuestionUid());
+
+                userRef.addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        HashMap map = (HashMap) dataSnapshot.getValue();
+                        if(map != null) {
+                            Log.d("genre",String.valueOf(map.get("genre")));
+                            mIsClick = true;
+                            likeButton.setImageResource(R.drawable.heart_red);
+
+                        }else{
+                            Log.d("genre","なにもありません");
+                            mIsClick = false;
+                            likeButton.setImageResource(R.drawable.heart_black);
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                    }
+                });
+            }
+
+
+            // いいねボタンの処理
             likeButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
+
+                    // ログインしている場合しかいいねボタンは出てこない
+                    // firebaseの初期化
+                    DatabaseReference mDataBaseReference = FirebaseDatabase.getInstance().getReference();
+                    // FirebaseAuthのオブジェクトを取得する
+                    FirebaseAuth mAuth = FirebaseAuth.getInstance();
+                    // ログインしているユーザーの取得
+                    FirebaseUser user = mAuth.getCurrentUser();
+
+
                     if(mIsClick){ // クリックされていたら
                         likeButton.setImageResource(R.drawable.heart_black);
                         mIsClick = !mIsClick;
-                        // いいねリストから削除
+                        // TODO いいねリストから削除
+
+                        DatabaseReference userRef = mDataBaseReference.child(Const.FavoritesPATH).child(user.getUid()).child(mQustion.getQuestionUid());
+
+                        userRef.removeValue();
+
                     }else{
                         likeButton.setImageResource(R.drawable.heart_red);
                         mIsClick = !mIsClick;
                         // アニメーション
                         Animation animation = AnimationUtils.loadAnimation(view.getContext(),R.anim.like_touch);
                         likeButton.startAnimation(animation);
-                        // いいねリストの保持
+
+                        // TODO いいねリストの登録
+                        DatabaseReference userRef = mDataBaseReference.child(Const.FavoritesPATH).child(user.getUid()).child(mQustion.getQuestionUid());
+
+                        Map<String, Integer> data = new HashMap<String, Integer>();
+                        data.put("genre", mQustion.getGenre());
+
+                        userRef.setValue(data);
+
                     }
                 }
             });
@@ -123,7 +209,7 @@ public class QuestionDetailListAdapter extends BaseAdapter {
                 convertView = mLayoutInflater.inflate(R.layout.list_answer, parent, false);
             }
 
-            Answer answer = mQuestion.getAnswers().get(position - 1);
+            Answer answer = mQustion.getAnswers().get(position - 1);
             String body = answer.getBody();
             String name = answer.getName();
 

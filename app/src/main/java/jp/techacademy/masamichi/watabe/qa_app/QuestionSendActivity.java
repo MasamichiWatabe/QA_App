@@ -14,11 +14,13 @@ import android.graphics.Matrix;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.provider.MediaStore;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
 import android.util.Base64;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
@@ -36,10 +38,10 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-public class QuestionSendActivity extends AppCompatActivity implements View.OnClickListener, DatabaseReference.CompletionListener {
+public class QuestionSendActivity extends AppCompatActivity implements View.OnClickListener, DatabaseReference.CompletionListener{
 
-    private static final int PERMISSIONS_REQUEST_CODE = 100;    // 他の数字でも問題ない
-    private static final int CHOOSER_REQUEST_CODE = 100;        // ただ1種類だけの場合でも今後のために定数として定義してその値を使用することが好ましいため
+    private static final int PERMISSIONS_REQUEST_CODE = 100;
+    private static final int CHOOSER_REQUEST_CODE = 100;
 
     private ProgressDialog mProgress;
     private EditText mTitleText;
@@ -47,17 +49,17 @@ public class QuestionSendActivity extends AppCompatActivity implements View.OnCl
     private ImageView mImageView;
     private Button mSendButton;
 
-    private int mGenre;         // ジャンルを保持する
-    private Uri mPictureUri;    // カメラで撮影した画像を保存するURI
+    private int mGenre;
+    private Uri mPictureUri;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_question_send);
 
-        // Intentで渡ってきたジャンルの番号を保持する
+        // 渡ってきたジャンルの番号を保持する
         Bundle extras = getIntent().getExtras();
-        mGenre = extras.getInt("genre");    // その番号を取り出してmGenreで保持
+        mGenre = extras.getInt("genre");
 
         // UIの準備
         setTitle("質問作成");
@@ -73,11 +75,11 @@ public class QuestionSendActivity extends AppCompatActivity implements View.OnCl
 
         mProgress = new ProgressDialog(this);
         mProgress.setMessage("投稿中...");
-
     }
 
-    @Override   // Intent連携から戻ってきたときに画像を取得し、ImageViewに設定
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data){
+
         if (requestCode == CHOOSER_REQUEST_CODE) {
 
             if (resultCode != RESULT_OK) {
@@ -89,9 +91,11 @@ public class QuestionSendActivity extends AppCompatActivity implements View.OnCl
             }
 
             // 画像を取得
+            // カメラかカメラロールからか
             Uri uri = (data == null || data.getData() == null) ? mPictureUri : data.getData();
 
             // URIからBitmapを取得する
+
             Bitmap image;
             try {
                 ContentResolver contentResolver = getContentResolver();
@@ -120,23 +124,24 @@ public class QuestionSendActivity extends AppCompatActivity implements View.OnCl
     }
 
     @Override
-    public void onClick(View v) {  // onClickメソッドでは添付画像を選択・表示するImageViewをタップした時と、投稿ボタンをタップした時の処理を行う
+    public void onClick(View v) {
+
         if (v == mImageView) {
-            // パーミッションの許可状態を確認する (Android6.0以降か否かで処理を分ける)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {   // 6.0以降である場合、checkSelfPerissionメソッドで外部ストレージへの書込が許可されてるか確認
+            // パーミッションの許可状態を確認する
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
                     // 許可されている
-                    showChooser();  // Intent連携でギャラリーとカメラを選択するダイアログを表示させるshowChooserメソッドを呼び出す
+                    showChooser();
                 } else {
                     // 許可されていないので許可ダイアログを表示する
                     requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSIONS_REQUEST_CODE);
 
                     return;
                 }
-            } else {        // Android5.0以前の場合はパーミッションの許可状態を確認せずにshowChooserメソッドを呼び出す
+            } else {
                 showChooser();
             }
-        } else if (v == mSendButton) {  // 投稿ボタンがタップされた時、キーボードを閉じタイトルと本文が入力されてることを確認したうえで登校するデータを用意してFirebaseに保存
+        } else if (v == mSendButton) {
             // キーボードが出てたら閉じる
             InputMethodManager im = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
             im.hideSoftInputFromWindow(v.getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
@@ -154,18 +159,18 @@ public class QuestionSendActivity extends AppCompatActivity implements View.OnCl
             String body = mBodyText.getText().toString();
 
             if (title.length() == 0) {
-                // 質問が入力されていないときはエラーを表示するだけ
-                Snackbar.make(v, "タイトルを入力してください", Snackbar.LENGTH_LONG).show();
+                // 質問が入力されていない時はエラーを表示するだけ
+                Snackbar.make(v, "タイトルを入力して下さい", Snackbar.LENGTH_LONG).show();
                 return;
             }
 
             if (body.length() == 0) {
-                // 質問が入力されていないときはエラーを表示するだけ
-                Snackbar.make(v, "質問を入力してください", Snackbar.LENGTH_LONG).show();
+                // 質問が入力されていない時はエラーを表示するだけ
+                Snackbar.make(v, "質問を入力して下さい", Snackbar.LENGTH_LONG).show();
                 return;
             }
 
-            // Preferenceから名前をとる
+            // Preferenceから名前を取る
             SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
             String name = sp.getString(Const.NameKEY, "");
 
@@ -176,7 +181,7 @@ public class QuestionSendActivity extends AppCompatActivity implements View.OnCl
             // 添付画像を取得する
             BitmapDrawable drawable = (BitmapDrawable) mImageView.getDrawable();
 
-            // 添付画像が設定されていれば画像を取り出してBASE64エンコードする ※BASE64エンコード：データを文字列に変換する仕組み(Firebaseは文字列や数字しか保存できない)
+            // 添付画像が設定されていれば画像を取り出してBASE64エンコードする
             if (drawable != null) {
                 Bitmap bitmap = drawable.getBitmap();
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -186,18 +191,18 @@ public class QuestionSendActivity extends AppCompatActivity implements View.OnCl
                 data.put("image", bitmapString);
             }
 
-            // 保存する際はDatabaseReferenceクラスのsetValueを使う
-            genreRef.push().setValue(data, this);   // 第2引数にはCompletionListenerクラスを指定。画像を保存する可能性があり時間がかかることが予想されるため
+            genreRef.push().setValue(data, this);
             mProgress.show();
         }
+
     }
 
-    @Override       // 許可ダイアログでユーザーが選択した結果を受け取る
+    @Override
     public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
         switch (requestCode) {
             case PERMISSIONS_REQUEST_CODE: {
-                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {     // こうすることで許可したかどうかを判断することができる
-                    // ユーザーが許可した時
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // ユーザーが許可したとき
                     showChooser();
                 }
                 return;
@@ -205,7 +210,7 @@ public class QuestionSendActivity extends AppCompatActivity implements View.OnCl
         }
     }
 
-    private void showChooser() {        // ギャラリーから選択するIntentとカメラで撮影するIntentを作成して、更にそれらを選択するIntentを作成してダイアログ表示
+    private void showChooser() {
         // ギャラリーから選択するIntent
         Intent galleryIntent = new Intent(Intent.ACTION_GET_CONTENT);
         galleryIntent.setType("image/*");
@@ -216,7 +221,8 @@ public class QuestionSendActivity extends AppCompatActivity implements View.OnCl
         ContentValues values = new ContentValues();
         values.put(MediaStore.Images.Media.TITLE, filename);
         values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
-        mPictureUri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+        mPictureUri = getContentResolver()
+                .insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
 
         Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, mPictureUri);
@@ -231,7 +237,7 @@ public class QuestionSendActivity extends AppCompatActivity implements View.OnCl
     }
 
     @Override
-    public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
+    public void onComplete(@Nullable DatabaseError databaseError, @NonNull DatabaseReference databaseReference) {
         mProgress.dismiss();
 
         if (databaseError == null) {
@@ -240,5 +246,4 @@ public class QuestionSendActivity extends AppCompatActivity implements View.OnCl
             Snackbar.make(findViewById(android.R.id.content), "投稿に失敗しました", Snackbar.LENGTH_LONG).show();
         }
     }
-
 }
